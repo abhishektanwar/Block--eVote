@@ -18,7 +18,7 @@ contract eVote{
     address public secondControllingAuthority;
     uint totalVotes;
     uint numberOfVoters;
-    
+    uint foundParty;
     struct Party{
         string name;
         string description;
@@ -35,13 +35,18 @@ contract eVote{
         mapping (string => bool) voted ;    
     }
     
-    enum State {created, Voting,Ended }
+    enum State {created, Voting, Ended }
         State public state;
         
     Party[] public parties;
-    Voter[] public requestedVoters;
-    mapping (address => Voter) votersRegister;
-    mapping (address => Voter) requestedVotersregister;
+    Voter[] public requestedVotersArray;
+    Voter[] public confirmedVotersArray;
+    address[] public requestedVotersAddress;
+    address[] public confirmedVotersAddress;
+    
+    mapping (string => Party) public partyMapping;
+    mapping (address => Voter) public votersRegister;
+    mapping (address => Voter) public requestedVotersregister;
     
     constructor (address _secondControllingAouthority,string memory _description ) public {
         controllingAuthority = msg.sender;
@@ -50,6 +55,7 @@ contract eVote{
         totalVotes = 0;
         numberOfVoters = 0;
         state = State.created;
+        foundParty = 0;
     } 
     
     modifier firstControllingOfficial() {
@@ -92,6 +98,10 @@ contract eVote{
             requestedtoregister : true
         });
         requestedVotersregister[msg.sender]=v;
+        requestedVotersAddress.push(msg.sender);
+        requestedVotersArray.push(v); 
+        
+        
         // requestedVoters.push(v);
     }
     // include functionality to removed allowed voters from requestedtovoteRegister
@@ -111,11 +121,59 @@ contract eVote{
                 v.votingToken = sender.votingToken;
                 v.requestedtoregister = sender.requestedtoregister;
                 votersRegister[_voterAddress] = v;
+                confirmedVotersAddress.push(_voterAddress);
+                confirmedVotersArray.push(v);
                 numberOfVoters++;
             }    
         }
     }
+    
+    function startVoting() public firstControllingOfficial secondControllingOfficial inState(State.created){
+        state = State.Voting ;
+    }
+    
+    function castVote(string _partyName) public inState(State.Voting) returns(bool _voted) {
+        bool voted = false;
+        for(uint prop=0; prop<parties.length;prop++){
+            if(keccak256(parties[prop].name) == keccak256(_partyName)){
+                foundParty = 1;
+                break;
+            }
+            else{
+                revert("Wrond Party name entered. Please enter Party name again");
+            }
+            
+        }
+        if(foundParty==1){
+            Party storage partyobj = partyMapping[_partyName];
+            if(!partyobj.voted[msg.sender]){
+                partyobj.voteCount+=1;
+                partyobj.voted[msg.sender]=true;
+                totalVotes+=1;
+                voted = true; 
+            }
+            foundParty=0;
+        }
+        
+        return voted;
+        
+        // if(partyobj){}
+        
+    }
+    
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
