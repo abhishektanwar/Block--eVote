@@ -108,7 +108,29 @@ contract eVote{
         // requestedVoters.push(v);
     }
     // include functionality to removed allowed voters from requestedtovoteRegister
-    function addToVoterRegister(address _voterAddress) public firstControllingOfficial secondControllingOfficial inState(State.created) {
+    function addToVoterRegister(address _voterAddress) public firstControllingOfficial inState(State.created) {
+        Voter storage sender = requestedVotersregister[_voterAddress];
+        if(sender.requestedtoregister){
+            if(sender.canVote<2){
+                sender.canVote++;
+            }
+            if(sender.canVote == 2){
+                sender.requestedtoregister = false;
+                sender.votingToken = true ;
+                
+                Voter memory v ;
+                v.hashId = sender.hashId;
+                v.canVote = sender.canVote;
+                v.votingToken = sender.votingToken;
+                v.requestedtoregister = sender.requestedtoregister;
+                votersRegister[_voterAddress] = v;
+                confirmedVotersAddress.push(_voterAddress);
+                confirmedVotersArray.push(v);
+                numberOfVoters++;
+            }    
+        }
+    }
+    function addToVoterRegister2(address _voterAddress) public secondControllingOfficial inState(State.created) {
         Voter storage sender = requestedVotersregister[_voterAddress];
         if(sender.requestedtoregister){
             if(sender.canVote<2){
@@ -136,31 +158,40 @@ contract eVote{
     }
     
     function castVote(string  _partyName) public inState(State.Voting) returns(bool _voted) {
-        bool voted = false;
-        for(uint prop=0; prop<parties.length;prop++){
-            if(keccak256(abi.encodePacked((parties[prop].name))) == keccak256(abi.encodePacked(_partyName))){
-                foundParty = 1;
-                break;
+        Voter storage vo = votersRegister[msg.sender];
+        if(!vo.requestedtoregister && vo.canVote ==2){
+            bool voted = false;
+            for(uint prop=0; prop<parties.length;prop++){
+                if(keccak256(abi.encodePacked((parties[prop].name))) == keccak256(abi.encodePacked(_partyName))){
+                    foundParty = 1;
+                    break;
+                }
+                else{
+                    revert("Wrond Party name entered. Please enter Party name again");
+                }
+                
             }
-            else{
-                revert("Wrond Party name entered. Please enter Party name again");
+            if(foundParty==1){
+                Party storage partyobj = partyMapping[_partyName];
+                if(!partyobj.voted[msg.sender]){
+                    partyobj.voteCount+=1;
+                    partyobj.voted[msg.sender]=true;
+                    totalVotes+=1;
+                    voted = true; 
+                    vo.voted[_partyName]=true;
+                }
+                foundParty=0;
             }
             
-        }
-        if(foundParty==1){
-            Party storage partyobj = partyMapping[_partyName];
-            if(!partyobj.voted[msg.sender]){
-                partyobj.voteCount+=1;
-                partyobj.voted[msg.sender]=true;
-                totalVotes+=1;
-                voted = true; 
-            }
-            foundParty=0;
+            return voted;
+            
+            // if(partyobj){}
+            
         }
         
-        return voted;
+            
         
-        // if(partyobj){}
+        
         
     }
     
