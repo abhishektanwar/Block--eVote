@@ -19,6 +19,8 @@ contract eVote{
     uint totalVotes;
     uint numberOfVoters;
     uint foundParty;
+    string winningParty;
+    string _partyName;
     struct Party{
         string name;
         string description;
@@ -44,7 +46,7 @@ contract eVote{
     address[] public requestedVotersAddress;
     address[] public confirmedVotersAddress;
     
-    mapping (string => Party) public partyMapping;
+    mapping (string => Party)  partyMapping;
     mapping (address => Voter) public votersRegister;
     mapping (address => Voter) public requestedVotersregister;
     
@@ -78,6 +80,7 @@ contract eVote{
             voteCount : 0
         });    
         parties.push(p);
+        partyMapping[_name]=p;
     }
     // voter requests to register him/her as a valid voter
     // function requestedVoterAdditionr(string memory _hashId) public inState(State.created) {
@@ -128,14 +131,14 @@ contract eVote{
         }
     }
     
-    function startVoting() public firstControllingOfficial secondControllingOfficial inState(State.created){
+    function startVoting() public firstControllingOfficial inState(State.created){
         state = State.Voting ;
     }
     
-    function castVote(string _partyName) public inState(State.Voting) returns(bool _voted) {
+    function castVote(string  _partyName) public inState(State.Voting) returns(bool _voted) {
         bool voted = false;
         for(uint prop=0; prop<parties.length;prop++){
-            if(keccak256(parties[prop].name) == keccak256(_partyName)){
+            if(keccak256(abi.encodePacked((parties[prop].name))) == keccak256(abi.encodePacked(_partyName))){
                 foundParty = 1;
                 break;
             }
@@ -161,19 +164,32 @@ contract eVote{
         
     }
     
+    function endVote() public firstControllingOfficial inState(State.Voting){
+        state = State.Ended;
+    }
+    
+    //error
+    function showParty(uint _index) public view returns(string){
+        
+        return parties[_index].name;
+    }
+    
+    function calculateResult() public firstControllingOfficial inState(State.Ended){
+        uint _voteCount=0;
+        
+        
+        for(uint i=0;i<parties.length ;i++){
+            _partyName = parties[i].name;
+            Party memory p = partyMapping[_partyName];
+            if(p.voteCount>_voteCount){
+                _voteCount = p.voteCount;
+                winningParty = p.name;
+            }
+            
+        }
+    }
+    
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
